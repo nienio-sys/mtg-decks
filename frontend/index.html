@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EDH Deckbuilder AI</title>
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --primary: #6366f1;
+      --primary-hover: #4f46e5;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: #334155;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text);
+      margin: 0;
+      padding: 2rem 1rem;
+      display: flex;
+      justify-content: center;
+    }
+
+    .container {
+      max-width: 800px;
+      width: 100%;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    h1 {
+      font-size: 2.25rem;
+      margin-bottom: 0.5rem;
+      color: #ffffff;
+    }
+
+    p.subtitle {
+      color: var(--text-muted);
+      font-size: 1rem;
+    }
+
+    .form-card {
+      background-color: var(--card-bg);
+      padding: 1.5rem;
+      border-radius: 0.75rem;
+      border: 1px solid var(--border);
+      margin-bottom: 2rem;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+    }
+
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 0.75rem;
+      background-color: #0f172a;
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      color: var(--text);
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    button {
+      width: 100%;
+      background-color: var(--primary);
+      color: white;
+      font-weight: 600;
+      padding: 0.85rem;
+      border: none;
+      border-radius: 0.5rem;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    button:hover {
+      background-color: var(--primary-hover);
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .output-card {
+      background-color: var(--card-bg);
+      padding: 1.5rem;
+      border-radius: 0.75rem;
+      border: 1px solid var(--border);
+      display: none;
+      white-space: pre-wrap;
+      font-family: monospace;
+      line-height: 1.5;
+      font-size: 0.95rem;
+    }
+
+    .loading {
+      text-align: center;
+      display: none;
+      margin: 2rem 0;
+      color: var(--text-muted);
+    }
+
+    .spinner {
+      border: 4px solid rgba(255, 255, 255, 0.1);
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border-left-color: var(--primary);
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1rem auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <h1>🧙‍♂️ Gerador de Decks Commander (EDH)</h1>
+      <p class="subtitle">Integração com Gemini AI, Scryfall & EDHREC</p>
+    </header>
+
+    <div class="form-card">
+      <form id="deckForm">
+        <div class="form-group">
+          <label for="comandante">Nome do Comandante (em Inglês):</label>
+          <input type="text" id="comandante" placeholder="Ex: Najeela, the Blade-Blossom ou Atraxa" required>
+        </div>
+
+        <div class="grid-2">
+          <div class="form-group">
+            <label for="orcamento">Orçamento Máximo (USD $):</label>
+            <input type="number" id="orcamento" value="150" min="20" max="5000">
+          </div>
+
+          <div class="form-group">
+            <label for="nivel">Nível de Poder:</label>
+            <select id="nivel">
+              <option value="Casual / For Fun">Casual / For Fun</option>
+              <option value="Otimizado / Mid-Power" selected>Otimizado / Mid-Power</option>
+              <option value="High-Power / Competitivo (cEDH)">High-Power / cEDH</option>
+            </select>
+          </div>
+        </div>
+
+        <button type="submit" id="btnSubmit">Gerar Decklist Completa</button>
+      </form>
+    </div>
+
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <p>Buscando dados no Scryfall, consultando EDHREC e montando a estratégia com o Gemini...<br>
+      <small style="color: #64748b;">(Nota: A primeira requisição no Render pode levar até 40s caso o servidor esteja acordando)</small></p>
+    </div>
+
+    <div class="output-card" id="output"></div>
+  </div>
+
+  <script>
+    // ⚠️ SUBSTITUA A URL ABAIXO PELA SUA URL DO RENDER
+    const RENDER_BACKEND_URL = 'https://mtg-decks.onrender.com';
+
+    const form = document.getElementById('deckForm');
+    const loading = document.getElementById('loading');
+    const output = document.getElementById('output');
+    const btnSubmit = document.getElementById('btnSubmit');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const comandante = document.getElementById('comandante').value.trim();
+      const orcamento = document.getElementById('orcamento').value;
+      const nivel_poder = document.getElementById('nivel').value;
+
+      output.style.display = 'none';
+      loading.style.display = 'block';
+      btnSubmit.disabled = true;
+
+      try {
+        const response = await fetch(`${RENDER_BACKEND_URL}/api/gerar-deck`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            comandante: comandante,
+            orcamento: parseInt(orcamento),
+            nivel_poder: nivel_poder
+          })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          output.textContent = data.resultado;
+          output.style.display = 'block';
+        } else {
+          alert(`Erro: ${data.error || 'Não foi possível gerar o deck.'}`);
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Erro ao conectar com o servidor backend no Render. Verifique se a URL está correta.');
+      } finally {
+        loading.style.display = 'none';
+        btnSubmit.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
