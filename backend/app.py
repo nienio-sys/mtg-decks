@@ -41,6 +41,15 @@ def obter_recomendacoes_edhrec(nome_comandante):
         return [c.get("name") for c in container[:15]]
     return []
 
+# Adicione esta rota logo acima de @app.route("/api/gerar-deck")
+
+@app.route("/", methods=["GET"])
+def home():
+    return jsonify({
+        "status": "online",
+        "message": "API do Commander Deckbuilder está rodando com sucesso!"
+    }), 200
+
 
 @app.route("/api/gerar-deck", methods=["POST"])
 def gerar_deck():
