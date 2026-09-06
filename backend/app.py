@@ -3,13 +3,14 @@ import re
 import requests
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-from google import genai
+from openai import OpenAI
 
 app = Flask(__name__)
 CORS(app)
 
-api_key = os.environ.get("GEMINI_API_KEY")
-client = genai.Client(api_key=api_key) if api_key else None
+# Busca a chave API configurada nas variáveis de ambiente do Render
+api_key = os.environ.get("OPENAI_API_KEY")
+client = OpenAI(api_key=api_key) if api_key else None
 
 
 def obter_dados_comandante(nome_carta):
@@ -52,14 +53,12 @@ def home():
 @app.route("/api/gerar-deck", methods=["POST"])
 def gerar_deck():
     if not client:
-        return jsonify({"error": "Chave GEMINI_API_KEY não configurada no servidor."}), 500
+        return jsonify({"error": "Chave OPENAI_API_KEY não configurada no servidor."}), 500
 
     dados = request.json or {}
     comandante = dados.get("comandante")
     orcamento = dados.get("orcamento", 150)
     nivel_poder = dados.get("nivel_poder", "Casual")
-    
-    # Captura os novos parâmetros do frontend
     subtema = dados.get("subtema", "Sinergia Geral do Comandante")
     regras_extras = dados.get("regras_extras", "Nenhuma")
 
@@ -90,18 +89,27 @@ def gerar_deck():
     """
 
     try:
-        response = client.models.generate_content(
-            model="gemini-3.6-flash", contents=prompt
+        # Chamada utilizando a SDK oficial da OpenAI (GPT-4o-mini ou GPT-4o)
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "Você é um assistente especializado na montagem e análise estratégica de baralhos do formato Commander de Magic: The Gathering."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7
         )
+        
+        resultado_texto = response.choices[0].message.content
+
         return jsonify(
             {
                 "comandante": cmd["nome"],
                 "cores": cmd["identidade_cor"],
-                "resultado": response.text,
+                "resultado": resultado_texto,
             }
         )
     except Exception as e:
-        return jsonify({"error": f"Erro ao gerar deck com Gemini: {str(e)}"}), 500
+        return jsonify({"error": f"Erro ao gerar deck com OpenAI: {str(e)}"}), 500
 
 
 if __name__ == "__main__":
