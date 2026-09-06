@@ -6,9 +6,8 @@ from flask_cors import CORS
 from google import genai
 
 app = Flask(__name__)
-CORS(app)  # Permite que seu frontend (Vercel) converse com o backend
+CORS(app)
 
-# Busca a chave API configurada nas variáveis de ambiente do Render
 api_key = os.environ.get("GEMINI_API_KEY")
 client = genai.Client(api_key=api_key) if api_key else None
 
@@ -41,7 +40,6 @@ def obter_recomendacoes_edhrec(nome_comandante):
         return [c.get("name") for c in container[:15]]
     return []
 
-# Adicione esta rota logo acima de @app.route("/api/gerar-deck")
 
 @app.route("/", methods=["GET"])
 def home():
@@ -60,6 +58,10 @@ def gerar_deck():
     comandante = dados.get("comandante")
     orcamento = dados.get("orcamento", 150)
     nivel_poder = dados.get("nivel_poder", "Casual")
+    
+    # Captura os novos parâmetros do frontend
+    subtema = dados.get("subtema", "Sinergia Geral do Comandante")
+    regras_extras = dados.get("regras_extras", "Nenhuma")
 
     if not comandante:
         return jsonify({"error": "Nome do comandante é obrigatório."}), 400
@@ -78,11 +80,13 @@ def gerar_deck():
     - Identidade de Cor: {cmd['identidade_cor']}
     - Orçamento Máximo: ${orcamento} USD
     - Nível de Poder: {nivel_poder}
+    - Subtema / Arquétipo Exigido: {subtema}
+    - Regras Extras / Restrições do Jogador: {regras_extras}
     - Sugestões EDHREC: {edhrec_cards}
     
     ESTRUTURA DA RESPOSTA:
     1. DECKLIST (Exatamente 100 cartas no formato '1 Nome da Carta' divididas por categoria).
-    2. RESUMO ESTRATÉGICO E COMBOS (Cabeçalho '### 🧠 PLANO DE JOGO E COMBOS' com Plano de Jogo, Combos e Condição de Vitória).
+    2. RESUMO ESTRATÉGICO E COMBOS (Cabeçalho '### 🧠 PLANO DE JOGO E COMBOS' detalhando a execução focada no subtema '{subtema}' e respeitando todas as regras extras).
     """
 
     try:
