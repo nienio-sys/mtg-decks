@@ -160,6 +160,26 @@
           <input type="text" id="comandante" placeholder="Ex: Najeela, the Blade-Blossom ou Atraxa" required>
         </div>
 
+        <div class="form-group">
+          <label for="subtema">Subtema / Arquétipo:</label>
+          <select id="subtema">
+            <option value="Sinergia Geral do Comandante" selected>Sinergia Geral / Melhor Desempenho</option>
+            <option value="Tribal (Foco na raça/tipo de criatura principal)">Tribal (Elfos, Goblins, Guerreiros, etc.)</option>
+            <option value="Voltron (Auras, Equipamentos e Dano de Comandante)">Voltron (Equipamentos & Auras)</option>
+            <option value="Tokens / Go-Wide (Criação de fichas e amplificação)">Tokens / Criaturas em Massa</option>
+            <option value="Aristocrats (Sacrifício de criaturas e dreno de vida)">Aristocrats (Sacrifício & Dreno)</option>
+            <option value="+1/+1 Counters (Proliferar e marcadores)">Marcadores +1/+1 / Proliferar</option>
+            <option value="Spellslinger (Foco em Mágicas Instantâneas e Feitiços)">Spellslinger (Magias Instantâneas/Feitiços)</option>
+            <option value="Reanimate / Graveyard (Interação e retorno do cemitério)">Reanimate / Cemitério</option>
+            <option value="Control / Stax (Controle de mesa e desaceleração)">Controle / Stax</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="regras_extras">Regras Extras e Restrições:</label>
+          <input type="text" id="regras_extras" placeholder="Ex: Sem turnos extras, Sem combos infinitos, Focar em cartas baratas">
+        </div>
+
         <div class="grid-2">
           <div class="form-group">
             <label for="orcamento">Orçamento Máximo (USD $):</label>
@@ -190,7 +210,6 @@
   </div>
 
   <script>
-    // ⚠️ SUBSTITUA A URL ABAIXO PELA SUA URL DO RENDER
     const RENDER_BACKEND_URL = 'https://mtg-decks.onrender.com';
 
     const form = document.getElementById('deckForm');
@@ -202,6 +221,8 @@
       e.preventDefault();
 
       const comandante = document.getElementById('comandante').value.trim();
+      const subtema = document.getElementById('subtema').value;
+      const regras_extras = document.getElementById('regras_extras').value.trim();
       const orcamento = document.getElementById('orcamento').value;
       const nivel_poder = document.getElementById('nivel').value;
 
@@ -217,6 +238,8 @@
           },
           body: JSON.stringify({
             comandante: comandante,
+            subtema: subtema,
+            regras_extras: regras_extras || "Nenhuma",
             orcamento: parseInt(orcamento),
             nivel_poder: nivel_poder
           })
