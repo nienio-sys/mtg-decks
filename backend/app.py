@@ -34,9 +34,20 @@ def obter_dados_comandante(nome_carta):
 def obter_recomendacoes_edhrec(nome_comandante):
     slug = re.sub(r"[\s_]+", "-", re.sub(r"[^\w\s-]", "", nome_comandante.lower()))
     url = f"https://json.edhrec.com/pages/commanders/{slug}.json"
-    resposta = requests.get(url, headers={"User-Agent": "DeckbuilderWeb/1.0"})
+
+    resposta = requests.get(
+        url,
+        headers={"User-Agent": "DeckbuilderWeb/1.0"}
+    )
+
     if resposta.status_code == 200:
-        return [c.get("name") for c in resposta.json().get("cardlist", [])[:15]]
+        dados = resposta.json()
+
+        import json
+        print(json.dumps(dados, indent=2)[:8000])
+
+        return []
+
     return []
 
 
@@ -79,6 +90,45 @@ REGRAS:
 - Respeitar identidade de cores informada.
 - Respeitar orçamento.
 - Priorizar sinergia, curva de mana, ramp, compra e remoções.
+CONSTRUÇÃO DA BASE DE MANA
+
+A base de mana deve ser otimizada para Commander.
+
+Regras obrigatórias:
+
+- Priorize terrenos não básicos sempre que houver opções compatíveis com o orçamento.
+- Utilize Command Tower sempre que possível.
+- Para decks de 2 ou mais cores, priorize terrenos que gerem múltiplas cores.
+- Utilize terrenos utilitários que tenham sinergia com o comandante ou estratégia quando apropriado.
+- Complete a base de mana com terrenos básicos apenas quando necessário para garantir consistência.
+- Evite gerar decks compostos majoritariamente por terrenos básicos quando existirem alternativas melhores dentro do orçamento.
+
+Considere, quando apropriado:
+- Fetch Lands
+- Shock Lands
+- Check Lands
+- Pain Lands
+- Fast Lands
+- Slow Lands
+- Bond Lands
+- Filter Lands
+- Triomes
+- Surveil Lands
+- Battlebond Lands
+- Pathways
+- Channel Lands
+- Creature Lands
+- Command Tower
+- Exotic Orchard
+- Reflecting Pool
+- Path of Ancestry
+- Plaza of Heroes
+- Cavern of Souls
+- Boseiju, Who Endures
+- Otawara, Soaring City
+- Takenuma, Abandoned Mire
+- Eiganjo, Seat of the Empire
+- Sokenzan, Crucible of Defiance
 
 FORMATO:
 - Sem markdown na decklist.
@@ -106,6 +156,9 @@ Parâmetros:
 - Regras extras: {regras_extras}
 - Sugestões EDHREC (priorize quando possível): {", ".join(edhrec_cards)}
 - NÃO adicione prefixo ou caracteres especiais antes ou depois dos nomes, nem espaços desnecessários.
+- Para orçamentos abaixo de US$100, utilize terrenos econômicos.
+- Para orçamentos entre US$100 e US$300, utilize uma base de mana intermediária.
+- Para orçamentos acima de US$300, utilize a melhor base de mana possível.
 
 Após a decklist, deixe duas linhas e escreva exatamente:
 
