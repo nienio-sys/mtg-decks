@@ -96,14 +96,16 @@ def gerar_deck():
     - Regras Extras do Jogador: {regras_extras}
     - Sugestões EDHREC: {edhrec_cards}
     
-    REGRAS RÍGIDAS DE FORMATAÇÃO DA DECKLIST:
-    1. Para cartas não-terreno e terrenos não-básicos, use SEMPRE o formato '1 Nome da Carta'.
-    2. Para TERRENOS BÁSICOS, use o formato 'QTD Nome do Terreno' (Exemplo correto: '5 Forest', '8 Swamp', NÃO use '1 5x Forest' ou '5x Forest').
-    3. Exatamente 100 cartas no total divididas por categorias claras.
+    REGRAS RÍGIDAS DE FORMATAÇÃO DA DECKLIST (COMPATÍVEL COM ARCHIDEKT/MOXFIELD):
+    1. A lista de cartas DEVE ser um bloco limpo, sem marcas de markdown (#, ##, **), sem linhas em branco extras e sem subtítulos de categoria dentro do bloco principal de cartas.
+    2. Coloque apenas o Comandante na primeira linha com a tag de comandante: '1 {cmd["nome"]} *CMDR*'
+    3. Para cartas únicas, use SEMPRE o formato '1 Nome da Carta' (ex: '1 Sol Ring').
+    4. Para terrenos básicos, use SEMPRE o formato 'QTD Nome do Terreno' (ex: '8 Forest', '5 Swamp').
+    5. NÃO adicione prefixos como '1 5x Forest' ou caracteres especiais antes dos nomes.
     
     ESTRUTURA DA RESPOSTA:
-    1. DECKLIST (Dividida por categorias).
-    2. RESUMO ESTRATÉGICO E COMBOS (Cabeçalho '### 🧠 PLANO DE JOGO E COMBOS').
+    - Inicie direto com as 100 cartas do deck (uma por linha).
+    - Após a última carta, adicione duas quebras de linha e coloque o cabeçalho '### 🧠 PLANO DE JOGO E COMBOS' para a análise tática.
     """
 
     try:
