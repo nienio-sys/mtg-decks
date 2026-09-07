@@ -50,15 +50,17 @@ def gerar_deck():
     (Se for incolor, use {{"PROPORCAO": {{"C": 100}}}})
 
     2. DECKLIST:
-    1 {cmd['nome']} *CMDR*
+    1 {cmd['nome']}
     1 Sol Ring
     (Gere exatamente mais 62 cartas não-terrenos e terrenos não-básicos no formato '1 Nome da Carta')
     NÃO adicione terrenos básicos aqui.
 
     3. ANÁLISE:
     Após a última carta, dê duas quebras de linha e coloque o cabeçalho '### 🧠 PLANO DE JOGO E COMBOS'.
-    """
 
+    4. NÃO adicione prefixo ou caracteres especiais antes dos nomes ou depois dos nomes, nem espaços desnecessários.
+    """
+    
     try:
         response = client.chat.completions.create(
             model="gpt-4o-mini",
