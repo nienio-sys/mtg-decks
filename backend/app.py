@@ -85,7 +85,7 @@ def gerar_deck():
     """
 
     prompt = f"""
-    Gere uma Decklist completa de 100 cartas para **{cmd['nome']}** seguida por uma análise tática.
+   Gere uma Decklist completa de 100 cartas para **{cmd['nome']}** seguida por uma análise tática.
     
     RESTRIÇÕES DO BARALHO:
     - Comandante: {cmd['nome']}
@@ -94,11 +94,16 @@ def gerar_deck():
     - Nível de Poder: {nivel_poder}
     - Subtema / Arquétipo Exigido: {subtema}
     - Regras Extras do Jogador: {regras_extras}
-    - Sugestões EDHREC (Filtre apenas as que batem com as cores): {edhrec_cards}
+    - Sugestões EDHREC: {edhrec_cards}
+    
+    REGRAS RÍGIDAS DE FORMATAÇÃO DA DECKLIST:
+    1. Para cartas não-terreno e terrenos não-básicos, use SEMPRE o formato '1 Nome da Carta'.
+    2. Para TERRENOS BÁSICOS, use o formato 'QTD Nome do Terreno' (Exemplo correto: '5 Forest', '8 Swamp', NÃO use '1 5x Forest' ou '5x Forest').
+    3. Exatamente 100 cartas no total divididas por categorias claras.
     
     ESTRUTURA DA RESPOSTA:
-    1. DECKLIST (Exatamente 100 cartas no formato '1 Nome da Carta' divididas por categoria, garantindo que 100% das cartas pertençam a {cores_validas} ou sejam incolores).
-    2. RESUMO ESTRATÉGICO E COMBOS (Cabeçalho '### 🧠 PLANO DE JOGO E COMBOS' detalhando a execução focada no subtema '{subtema}' e respeitando todas as restrições).
+    1. DECKLIST (Dividida por categorias).
+    2. RESUMO ESTRATÉGICO E COMBOS (Cabeçalho '### 🧠 PLANO DE JOGO E COMBOS').
     """
 
     try:
