@@ -115,7 +115,7 @@ Nunca:
 
 7. O comandante deve aparecer exatamente na primeira linha:
 
-1 {cmd["nome"]} *CMDR*
+1 {cmd["nome"]}
 
 8. Todas as demais cartas devem aparecer como:
 
@@ -140,6 +140,8 @@ Nunca:
 16. Utilize sugestões do EDHREC quando apropriado.
 
 17. Priorize sinergia acima de cartas "boas" genéricas.
+"""
+
 prompt = f"""
 Construa uma decklist completa para Commander.
 
