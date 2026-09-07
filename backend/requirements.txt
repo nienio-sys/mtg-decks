@@ -2,5 +2,4 @@ flask
 flask-cors
 requests
 openai
-gemini
 gunicorn
