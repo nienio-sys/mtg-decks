@@ -102,14 +102,15 @@ def gerar_deck():
     """
 
     try:
+        # Removida a vírgula ao final para retornar o objeto ChatCompletion diretamente
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": system_instruction},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.3 # Temperatura menor reduz 'alucinações' e melhora a adesão às regras
-        ),
+            temperature=0.3
+        )
         
         resultado_texto = response.choices[0].message.content
 
