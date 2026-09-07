@@ -75,7 +75,7 @@ def gerar_deck():
     cores_validas = cmd['identidade_cor'] if cmd['identidade_cor'] else ["Incolor (C)"]
 
     system_instruction = f"""
-    Você é um juiz oficial de Magic: The Gathering e especialista no formato Commander (EDH).
+    Você é um especialista em Magic: The Gathering e no formato Commander (EDH).
     
     REGRA INVIOLÁVEL DE IDENTIDADE DE COR:
     - O comandante tem a identidade de cor: {cores_validas}.
@@ -98,10 +98,10 @@ def gerar_deck():
     
     REGRAS RÍGIDAS DE FORMATAÇÃO DA DECKLIST (COMPATÍVEL COM ARCHIDEKT/MOXFIELD):
     1. A lista de cartas DEVE ser um bloco limpo, sem marcas de markdown (#, ##, **), sem linhas em branco extras e sem subtítulos de categoria dentro do bloco principal de cartas.
-    2. Coloque apenas o Comandante na primeira linha com a tag de comandante: '1 {cmd["nome"]} *CMDR*'
+    2. Coloque apenas o Comandante na primeira linha com a tag de comandante: '1 {cmd["nome"]}
     3. Para cartas únicas, use SEMPRE o formato '1 Nome da Carta' (ex: '1 Sol Ring').
     4. Para terrenos básicos, use SEMPRE o formato 'QTD Nome do Terreno' (ex: '8 Forest', '5 Swamp').
-    5. NÃO adicione prefixos como '1 5x Forest' ou caracteres especiais antes dos nomes.
+    5. NÃO adicione prefixo ou caracteres especiais antes dos nomes ou depois dos nomes, nem espaços desnecessários.
     
     ESTRUTURA DA RESPOSTA:
     - Inicie direto com as 100 cartas do deck (uma por linha).
@@ -109,7 +109,6 @@ def gerar_deck():
     """
 
     try:
-        # Removida a vírgula ao final para retornar o objeto ChatCompletion diretamente
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
