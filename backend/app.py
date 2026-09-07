@@ -1,54 +1,5 @@
-import os
+import json
 import re
-import requests
-from flask import Flask, jsonify, request
-from flask_cors import CORS
-from openai import OpenAI
-
-app = Flask(__name__)
-CORS(app)
-
-# Busca a chave API configurada nas variáveis de ambiente do Render
-api_key = os.environ.get("OPENAI_API_KEY")
-client = OpenAI(api_key=api_key) if api_key else None
-
-
-def obter_dados_comandante(nome_carta):
-    url = "https://api.scryfall.com/cards/named"
-    resposta = requests.get(
-        url,
-        params={"fuzzy": nome_carta},
-        headers={"User-Agent": "DeckbuilderWeb/1.0"},
-    )
-    if resposta.status_code == 200:
-        carta = resposta.json()
-        return {
-            "nome": carta.get("name"),
-            "mana_cost": carta.get("mana_cost", "N/A"),
-            "tipo": carta.get("type_line"),
-            "identidade_cor": carta.get("color_identity"),
-            "texto_oracle": carta.get("oracle_text", ""),
-        }
-    return None
-
-
-def obter_recomendacoes_edhrec(nome_comandante):
-    slug = re.sub(r"[\s_]+", "-", re.sub(r"[^\w\s-]", "", nome_comandante.lower()))
-    url = f"https://json.edhrec.com/pages/commanders/{slug}.json"
-    resposta = requests.get(url, headers={"User-Agent": "DeckbuilderWeb/1.0"})
-    if resposta.status_code == 200:
-        container = resposta.json().get("cardlist", [])
-        return [c.get("name") for c in container[:15]]
-    return []
-
-
-@app.route("/", methods=["GET"])
-def home():
-    return jsonify({
-        "status": "online",
-        "message": "API do Commander Deckbuilder está rodando com sucesso!"
-    }), 200
-
 
 @app.route("/api/gerar-deck", methods=["POST"])
 def gerar_deck():
@@ -70,54 +21,42 @@ def gerar_deck():
         return jsonify({"error": "Comandante não encontrado no Scryfall."}), 404
 
     edhrec_cards = obter_recomendacoes_edhrec(cmd["nome"])
-
-    # Tratamento para exibir a identidade de cor de forma clara
     cores_validas = cmd['identidade_cor'] if cmd['identidade_cor'] else ["Incolor (C)"]
 
     system_instruction = f"""
-    Você é um especialista em Magic: The Gathering e no formato Commander (EDH).
-    
-    REGRA INVIOLÁVEL DE IDENTIDADE DE COR:
-    1. A contagem TOTAL exata do deck DEVE ser de 100 cartas (1 Comandante + 99 cartas no 99).
-    2. Identidade de Cor permitida: {cores_validas}. NENHUMA carta fora dessas cores pode entrar.
-    3. Para terrenos básicos, NUNCA coloque o número '1' na frente da quantidade. 
-       - ERRADO: "1 5 Forest" ou "1 5x Forest"
-       - CORRETO: "5 Forest"
-    4. Siga a sintaxe exata do Archidekt/Moxfield para a lista de cartas.
+    Você é um gerador técnico de baralhos de Magic: The Gathering (Commander/EDH).
+    Identidade de Cor Permitida: {cores_validas}. NUNCA inclua cartas fora dessas cores.
+    Gere EXATAMENTE 63 cartas únicas de mágicas e terrenos não-básicos.
     """
 
     prompt = f"""
-   Gere uma Decklist completa de 100 cartas para **{cmd['nome']}** seguida por uma análise tática.
-    
+    Gere a decklist para **{cmd['nome']}** e a análise tática.
+
     RESTRIÇÕES DO BARALHO:
     - Comandante: {cmd['nome']}
-    - Identidade de Cor Permitida: {cores_validas}
-    - Orçamento Máximo: ${orcamento} USD
+    - Cores permitidas: {cores_validas}
+    - Orçamento: ${orcamento} USD
     - Nível de Poder: {nivel_poder}
-    - Subtema / Arquétipo Exigido: {subtema}
-    - Regras Extras do Jogador: {regras_extras}
+    - Subtema: {subtema}
+    - Regras Extras: {regras_extras}
     - Sugestões EDHREC: {edhrec_cards}
+
+    ESTRUTURA OBRIGATÓRIA DA RESPOSTA:
     
-    REGRAS RÍGIDAS DE FORMATAÇÃO DA DECKLIST (COMPATÍVEL COM ARCHIDEKT/MOXFIELD):
-    1. A lista de cartas DEVE ser um bloco limpo, sem marcas de markdown (#, ##, **), sem linhas em branco extras e sem subtítulos de categoria dentro do bloco principal de cartas.
-    2. Coloque apenas o Comandante na primeira linha com a tag de comandante: '1 {cmd["nome"]}
-    3. Para cartas únicas, use SEMPRE o formato '1 Nome da Carta' (ex: '1 Sol Ring').
-    4. Para terrenos básicos, use SEMPRE o formato 'QTD Nome do Terreno' (ex: '8 Forest', '5 Swamp').
-    5. NÃO adicione prefixo ou caracteres especiais antes dos nomes ou depois dos nomes, nem espaços desnecessários.
-    
-    EXEMPLO DE FORMATAÇÃO EXIGIDO PARA A DECKLIST:
+    1. PROPORCAO_CORES:
+    Retorne um JSON na primeira linha calculando a proporção aproximada de cada cor nas 63 mágicas selecionadas (soma total = 100).
+    Exemplo para deck Tricolor (G/U/B):
+    {{"PROPORCAO": {{"G": 50, "U": 30, "B": 20}}}}
+    (Se for incolor, use {{"PROPORCAO": {{"C": 100}}}})
+
+    2. DECKLIST:
     1 {cmd['nome']} *CMDR*
     1 Sol Ring
-    1 Arcane Signet
-    1 Command Tower
-    5 Forest
-    5 Island
-    5 Swamp
-    (Continue até a soma das quantidades ser exatamente 100 cartas).
-    
-    ESTRUTURA DA RESPOSTA:
-    - Inicie direto com as 100 cartas do deck (uma por linha).
-    - Após a última carta, adicione duas quebras de linha e coloque o cabeçalho '### 🧠 PLANO DE JOGO E COMBOS' para a análise tática.
+    (Gere exatamente mais 62 cartas não-terrenos e terrenos não-básicos no formato '1 Nome da Carta')
+    NÃO adicione terrenos básicos aqui.
+
+    3. ANÁLISE:
+    Após a última carta, dê duas quebras de linha e coloque o cabeçalho '### 🧠 PLANO DE JOGO E COMBOS'.
     """
 
     try:
@@ -130,18 +69,67 @@ def gerar_deck():
             temperature=0.3
         )
         
-        resultado_texto = response.choices[0].message.content
+        texto_original = response.choices[0].message.content
+
+        # 1. EXTRAÇÃO DO PESO DE CORES (JSON)
+        pesos_cor = {}
+        match_json = re.search(r'\{"PROPORCAO":\s*\{.*?\}\}', texto_original)
+        if match_json:
+            try:
+                pesos_cor = json.loads(match_json.group(0)).get("PROPORCAO", {})
+            except:
+                pesos_cor = {}
+
+        # 2. SEPARAÇÃO DA LISTA E ANÁLISE
+        partes = texto_original.split("### 🧠 PLANO DE JOGO E COMBOS")
+        bloco_deck = partes[0].strip()
+        analise = "### 🧠 PLANO DE JOGO E COMBOS" + partes[1] if len(partes) > 1 else ""
+
+        # Extrai apenas as linhas de cartas válidas (ignorando o JSON inicial)
+        linhas_cartas = [
+            l.strip() for l in bloco_deck.split("\n") 
+            if l.strip() and l.strip().startswith("1 ") and not l.strip().startswith("{")
+        ]
+        
+        # Garante exatamente 64 cartas no bloco de mágicas (Comandante + 63)
+        linhas_cartas = linhas_cartas[:64]
+        total_atuais = len(linhas_cartas)
+        terrenos_necessarios = 100 - total_atuais
+
+        # 3. CÁLCULO PROPORCIONAL DOS TERRENOS BÁSICOS
+        mapa_terrenos = {'G': 'Forest', 'U': 'Island', 'B': 'Swamp', 'R': 'Mountain', 'W': 'Plains', 'C': 'Wastes'}
+        terrenos_gerados = []
+
+        if pesos_cor and terrenos_necessarios > 0:
+            total_peso = sum(pesos_cor.values()) or 1
+            acumulado = 0
+            
+            # Converte porcentagem do peso de mana em quantidade exata de terrenos
+            itens_cor = list(pesos_cor.items())
+            for idx, (cor, peso) in enumerate(itens_cor):
+                if idx == len(itens_cor) - 1:
+                    qtd = terrenos_necessarios - acumulado  # Sobra final para fechar exato
+                else:
+                    qtd = round((peso / total_peso) * terrenos_necessarios)
+                    acumulado += qtd
+                
+                nome_terreno = mapa_terrenos.get(cor, 'Wastes')
+                if qtd > 0:
+                    terrenos_gerados.append(f"{qtd} {nome_terreno}")
+        else:
+            # Fallback caso a IA não envie o JSON
+            terrenos_gerados.append(f"{terrenos_necessarios} Wastes")
+
+        # 4. MONTAGEM DA RESPOSTA FINAL (COMPATÍVEL COM ARCHIDEKT)
+        decklist_final = "\n".join(linhas_cartas) + "\n" + "\n".join(terrenos_gerados)
+        resultado_formatado = f"{decklist_final}\n\n{analise}"
 
         return jsonify(
             {
                 "comandante": cmd["nome"],
                 "cores": cmd["identidade_cor"],
-                "resultado": resultado_texto,
+                "resultado": resultado_formatado,
             }
         )
     except Exception as e:
         return jsonify({"error": f"Erro ao gerar deck com OpenAI: {str(e)}"}), 500
-
-
-if __name__ == "__main__":
-    app.run(debug=True, port=5000)
