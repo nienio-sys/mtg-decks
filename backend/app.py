@@ -78,10 +78,12 @@ def gerar_deck():
     Você é um especialista em Magic: The Gathering e no formato Commander (EDH).
     
     REGRA INVIOLÁVEL DE IDENTIDADE DE COR:
-    - O comandante tem a identidade de cor: {cores_validas}.
-    - É ABSOLUTAMENTE PROIBIDO incluir qualquer carta que contenha símbolos de mana (no custo de mana ou no texto de regras) de cores fora de {cores_validas}.
-    - Cartas incolores são permitidas.
-    - Revise DUAS VEZES cada carta do deck antes de responder. Se uma carta violar a identidade de cor, substitua-a imediatamente por uma carta válida.
+    1. A contagem TOTAL exata do deck DEVE ser de 100 cartas (1 Comandante + 99 cartas no 99).
+    2. Identidade de Cor permitida: {cores_validas}. NENHUMA carta fora dessas cores pode entrar.
+    3. Para terrenos básicos, NUNCA coloque o número '1' na frente da quantidade. 
+       - ERRADO: "1 5 Forest" ou "1 5x Forest"
+       - CORRETO: "5 Forest"
+    4. Siga a sintaxe exata do Archidekt/Moxfield para a lista de cartas.
     """
 
     prompt = f"""
@@ -102,6 +104,16 @@ def gerar_deck():
     3. Para cartas únicas, use SEMPRE o formato '1 Nome da Carta' (ex: '1 Sol Ring').
     4. Para terrenos básicos, use SEMPRE o formato 'QTD Nome do Terreno' (ex: '8 Forest', '5 Swamp').
     5. NÃO adicione prefixo ou caracteres especiais antes dos nomes ou depois dos nomes, nem espaços desnecessários.
+    
+    EXEMPLO DE FORMATAÇÃO EXIGIDO PARA A DECKLIST:
+    1 {cmd['nome']} *CMDR*
+    1 Sol Ring
+    1 Arcane Signet
+    1 Command Tower
+    5 Forest
+    5 Island
+    5 Swamp
+    (Continue até a soma das quantidades ser exatamente 100 cartas).
     
     ESTRUTURA DA RESPOSTA:
     - Inicie direto com as 100 cartas do deck (uma por linha).
