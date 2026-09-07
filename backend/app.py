@@ -74,51 +74,153 @@ def gerar_deck():
     # Tratamento para exibir a identidade de cor de forma clara
     cores_validas = cmd['identidade_cor'] if cmd['identidade_cor'] else ["Incolor (C)"]
 
-    system_instruction = f"""
-    Você é um especialista em Magic: The Gathering e no formato Commander (EDH).
-    
-    REGRA INVIOLÁVEL DE IDENTIDADE DE COR:
-    1. A contagem TOTAL exata do deck DEVE ser de 100 cartas (1 Comandante + 99 cartas no 99).
-    2. Identidade de Cor permitida: {cores_validas}. NENHUMA carta fora dessas cores pode entrar.
-    3. Para terrenos básicos, NUNCA coloque o número '1' na frente da quantidade. 
-       - ERRADO: "1 5 Forest" ou "1 5x Forest"
-       - CORRETO: "5 Forest"
-    4. Siga a sintaxe exata do Archidekt/Moxfield para a lista de cartas.
-    """
+system_prompt = f"""
+Você é um deckbuilder especialista em Magic: The Gathering, Commander (EDH), EDHREC e construção otimizada de decks.
 
-    prompt = f"""
-   Gere uma Decklist completa de 100 cartas para **{cmd['nome']}** seguida por uma análise tática.
+Sua prioridade máxima é gerar uma decklist VÁLIDA para Archidekt e Moxfield.
+
+========================
+REGRAS OBRIGATÓRIAS
+========================
+
+1. O deck DEVE conter exatamente:
+   - 1 comandante
+   - 99 cartas no deck
+   - Total = 100 cartas
+
+2. A identidade de cor permitida é APENAS:
+   {cores_validas}
+
+É proibido incluir qualquer carta cuja identidade de cor contenha símbolos fora dessas cores.
+
+3. Não repita cartas que não sejam terrenos básicos.
+
+4. Antes de responder:
+   - conte todas as cartas;
+   - complete a quantidade com terrenos básicos;
+   - confira novamente que o total final é exatamente 100 cartas.
+
+5. Nunca explique sua contagem.
+
+6. Terrenos básicos devem seguir este formato:
+
+   12 Forest
+   10 Island
+
+Nunca:
+
+   1 12 Forest
+   1x Forest
+   12x Forest
+
+7. O comandante deve aparecer exatamente na primeira linha:
+
+1 {cmd["nome"]} *CMDR*
+
+8. Todas as demais cartas devem aparecer como:
+
+1 Sol Ring
+1 Cultivate
+1 Beast Within
+
+9. Não utilize categorias dentro da decklist.
+
+10. Não utilize markdown dentro da decklist.
+
+11. Não utilize bullets.
+
+12. Não utilize numeração de seções.
+
+13. Não utilize comentários entre cartas.
+
+14. Caso alguma carta ultrapasse o orçamento, substitua por uma alternativa funcional da mesma função.
+
+15. A decklist precisa ser legal no formato Commander.
+
+16. Utilize sugestões do EDHREC quando apropriado.
+
+17. Priorize sinergia acima de cartas "boas" genéricas.
+prompt = f"""
+Construa uma decklist completa para Commander.
+
+COMANDANTE
+{cmd["nome"]}
+
+IDENTIDADE DE COR
+{cores_validas}
+
+ORÇAMENTO
+US${orcamento}
+
+NÍVEL DE PODER
+{nivel_poder}
+
+SUBTEMA
+{subtema}
+
+REGRAS EXTRAS
+{regras_extras}
+
+SUGESTÕES DO EDHREC
+{edhrec_cards}
+
+========================
+PROCESSO OBRIGATÓRIO
+========================
+
+1. Escolha todas as cartas não-terreno.
+2. Escolha os terrenos utilitários.
+3. Conte quantas cartas existem.
+4. Complete APENAS com terrenos básicos.
+5. Confira novamente.
+6. O resultado final deve possuir exatamente 100 cartas.
+
+========================
+FORMATO DA RESPOSTA
+========================
+
+Primeira linha:
+
+1 {cmd["nome"]}
+
+Depois:
+
+1 Sol Ring
+1 Arcane Signet
+...
+
+Terrenos básicos:
+
+12 Forest
+10 Island
+
+Após a decklist, escreva:
+
+### 🧠 PLANO DE JOGO E COMBOS
+
+Inclua:
+
+- Estratégia geral
+- Condições de vitória
+- Principais sinergias
+- Principais combos
+- Sequência ideal de abertura
+- Como pilotar o deck
+- Pontos fracos
+- Possíveis upgrades
+
+IMPORTANTE:
+
+Antes de responder, confirme internamente que:
+
+✓ Existem exatamente 100 cartas.
+✓ O comandante foi contado.
+✓ Existem exatamente 99 cartas além do comandante.
+✓ Nenhuma carta viola a identidade de cor.
+✓ Não existem cartas duplicadas (exceto terrenos básicos).
+✓ A sintaxe é compatível com Archidekt/Moxfield.
+"""
     
-    RESTRIÇÕES DO BARALHO:
-    - Comandante: {cmd['nome']}
-    - Identidade de Cor Permitida: {cores_validas}
-    - Orçamento Máximo: ${orcamento} USD
-    - Nível de Poder: {nivel_poder}
-    - Subtema / Arquétipo Exigido: {subtema}
-    - Regras Extras do Jogador: {regras_extras}
-    - Sugestões EDHREC: {edhrec_cards}
-    
-    REGRAS RÍGIDAS DE FORMATAÇÃO DA DECKLIST (COMPATÍVEL COM ARCHIDEKT/MOXFIELD):
-    1. A lista de cartas DEVE ser um bloco limpo, sem marcas de markdown (#, ##, **), sem linhas em branco extras e sem subtítulos de categoria dentro do bloco principal de cartas.
-    2. Coloque apenas o Comandante na primeira linha com a tag de comandante: '1 {cmd["nome"]}
-    3. Para cartas únicas, use SEMPRE o formato '1 Nome da Carta' (ex: '1 Sol Ring').
-    4. Antes de adicionar terrenos básicos conte a quantidade de cartas e complete com terrenos basicos proporcionais nas cores até fechar o total de 100 cartas incluindo o comandante.
-    5. NÃO adicione prefixo ou caracteres especiais antes dos nomes ou depois dos nomes, nem espaços desnecessários.
-    
-    EXEMPLO DE FORMATAÇÃO EXIGIDO PARA A DECKLIST:
-    1 {cmd['nome']} *CMDR*
-    1 Sol Ring
-    1 Arcane Signet
-    1 Command Tower
-    5 Forest
-    5 Island
-    5 Swamp
-    (Continue até a soma das quantidades ser exatamente 100 cartas).
-    
-    ESTRUTURA DA RESPOSTA:
-    - Inicie direto com as 100 cartas do deck (uma por linha).
-    - Após a última carta, adicione duas quebras de linha e coloque o cabeçalho '### 🧠 PLANO DE JOGO E COMBOS' para a análise tática.
-    """
 
     try:
         response = client.chat.completions.create(
