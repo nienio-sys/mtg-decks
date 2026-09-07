@@ -129,7 +129,6 @@ Explique:
                 {"role": "system", "content": system_instruction},
                 {"role": "user", "content": prompt},
             ],
-            temperature=0.3,
         )
 
         return jsonify({
