@@ -31,24 +31,87 @@ def obter_dados_comandante(nome_carta):
     return None
 
 
-def obter_recomendacoes_edhrec(nome_comandante):
-    slug = re.sub(r"[\s_]+", "-", re.sub(r"[^\w\s-]", "", nome_comandante.lower()))
-    url = f"https://json.edhrec.com/pages/commanders/{slug}.json"
+def procurar_cardlist(obj):
+    """
+    Procura recursivamente qualquer chave 'cardlist'
+    dentro do JSON do EDHREC.
+    """
+    if isinstance(obj, dict):
+        for chave, valor in obj.items():
+            if chave == "cardlist" and isinstance(valor, list):
+                return valor
 
-    resposta = requests.get(
-        url,
-        headers={"User-Agent": "DeckbuilderWeb/1.0"}
+            resultado = procurar_cardlist(valor)
+            if resultado:
+                return resultado
+
+    elif isinstance(obj, list):
+        for item in obj:
+            resultado = procurar_cardlist(item)
+            if resultado:
+                return resultado
+
+    return None
+
+
+def obter_recomendacoes_edhrec(nome_comandante):
+    slug = re.sub(
+        r"[\s_]+",
+        "-",
+        re.sub(r"[^\w\s-]", "", nome_comandante.lower())
     )
 
-    if resposta.status_code == 200:
+    url = f"https://json.edhrec.com/pages/commanders/{slug}.json"
+
+    try:
+        resposta = requests.get(
+            url,
+            headers={"User-Agent": "DeckbuilderWeb/1.0"},
+            timeout=15
+        )
+
+        if resposta.status_code != 200:
+            return []
+
         dados = resposta.json()
 
-        import json
-        print(json.dumps(dados, indent=2)[:8000])
+        cards = procurar_cardlist(dados)
 
+        if not cards:
+            print("Nenhum cardlist encontrado no EDHREC.")
+            return []
+
+        recomendacoes = []
+        vistos = set()
+
+        for carta in cards:
+
+            nome = carta.get("name")
+
+            if not nome:
+                continue
+
+            if nome in vistos:
+                continue
+
+            vistos.add(nome)
+
+            synergy = carta.get("synergy")
+
+            if synergy is not None:
+                recomendacoes.append(
+                    f"{nome} (Synergy {synergy})"
+                )
+            else:
+                recomendacoes.append(nome)
+
+        print(f"EDHREC: {len(recomendacoes)} cartas carregadas.")
+
+        return recomendacoes[:60]
+
+    except Exception as e:
+        print("Erro EDHREC:", e)
         return []
-
-    return []
 
 
 @app.route("/", methods=["GET"])
@@ -154,7 +217,7 @@ Parâmetros:
 - Nível de poder: {nivel_poder}
 - Subtema: {subtema}
 - Regras extras: {regras_extras}
-- Sugestões EDHREC (priorize quando possível): {", ".join(edhrec_cards)}
+- Cartas mais recomendadas pelo EDHREC: {chr(10).join("- " + c for c in edhrec_cards)}
 - NÃO adicione prefixo ou caracteres especiais antes ou depois dos nomes, nem espaços desnecessários.
 - Para orçamentos abaixo de US$100, utilize terrenos econômicos.
 - Para orçamentos entre US$100 e US$300, utilize uma base de mana intermediária.
