@@ -1,3 +1,4 @@
+import json
 import os
 import re
 import requests
@@ -8,7 +9,6 @@ from openai import OpenAI
 app = Flask(__name__)
 CORS(app)
 
-# Busca a chave API configurada nas variáveis de ambiente do Render
 api_key = os.environ.get("OPENAI_API_KEY")
 client = OpenAI(api_key=api_key) if api_key else None
 
@@ -70,159 +70,40 @@ def gerar_deck():
         return jsonify({"error": "Comandante não encontrado no Scryfall."}), 404
 
     edhrec_cards = obter_recomendacoes_edhrec(cmd["nome"])
-
-    # Tratamento para exibir a identidade de cor de forma clara
     cores_validas = cmd['identidade_cor'] if cmd['identidade_cor'] else ["Incolor (C)"]
 
-system_prompt = f"""
-Você é um deckbuilder especialista em Magic: The Gathering, Commander (EDH), EDHREC e construção otimizada de decks.
+    system_instruction = f"""
+    Você é um especialista em Magic: The Gathering (Commander/EDH).
+    Identidade de Cor Permitida: {cores_validas}. É PROIBIDO incluir cartas fora dessas cores.
+    Gere EXATAMENTE 63 cartas únicas de mágicas e terrenos não-básicos.
+    """
 
-Sua prioridade máxima é gerar uma decklist VÁLIDA para Archidekt e Moxfield.
+    prompt = f"""
+    Gere a decklist para **{cmd['nome']}** e a análise tática.
 
-========================
-REGRAS OBRIGATÓRIAS
-========================
+    RESTRIÇÕES DO BARALHO:
+    - Comandante: {cmd['nome']}
+    - Cores permitidas: {cores_validas}
+    - Orçamento: ${orcamento} USD
+    - Nível de Poder: {nivel_poder}
+    - Subtema: {subtema}
+    - Regras Extras: {regras_extras}
+    - Sugestões EDHREC: {edhrec_cards}
 
-1. O deck DEVE conter exatamente:
-   - 1 comandante
-   - 99 cartas no deck
-   - Total = 100 cartas
+    ESTRUTURA OBRIGATÓRIA DA RESPOSTA:
 
-2. A identidade de cor permitida é APENAS:
-   {cores_validas}
+    1. Na primeira linha, retorne o peso de cada cor nas mágicas escolhidas em formato JSON:
+    {{"PROPORCAO": {{"G": 40, "U": 30, "B": 30}}}}
 
-É proibido incluir qualquer carta cuja identidade de cor contenha símbolos fora dessas cores.
+    2. DECKLIST:
+    1 {cmd['nome']}
+    1 Sol Ring
+    (Gere mais 62 cartas não-terrenos e terrenos não-básicos no formato '1 Nome da Carta')
+    NÃO inclua terrenos básicos nesta lista.
 
-3. Não repita cartas que não sejam terrenos básicos.
-
-4. Antes de responder:
-   - conte todas as cartas;
-   - complete a quantidade com terrenos básicos;
-   - confira novamente que o total final é exatamente 100 cartas.
-
-5. Nunca explique sua contagem.
-
-6. Terrenos básicos devem seguir este formato:
-
-   12 Forest
-   10 Island
-
-Nunca:
-
-   1 12 Forest
-   1x Forest
-   12x Forest
-
-7. O comandante deve aparecer exatamente na primeira linha:
-
-1 {cmd["nome"]}
-
-8. Todas as demais cartas devem aparecer como:
-
-1 Sol Ring
-1 Cultivate
-1 Beast Within
-
-9. Não utilize categorias dentro da decklist.
-
-10. Não utilize markdown dentro da decklist.
-
-11. Não utilize bullets.
-
-12. Não utilize numeração de seções.
-
-13. Não utilize comentários entre cartas.
-
-14. Caso alguma carta ultrapasse o orçamento, substitua por uma alternativa funcional da mesma função.
-
-15. A decklist precisa ser legal no formato Commander.
-
-16. Utilize sugestões do EDHREC quando apropriado.
-
-17. Priorize sinergia acima de cartas "boas" genéricas.
-"""
-
-prompt = f"""
-Construa uma decklist completa para Commander.
-
-COMANDANTE
-{cmd["nome"]}
-
-IDENTIDADE DE COR
-{cores_validas}
-
-ORÇAMENTO
-US${orcamento}
-
-NÍVEL DE PODER
-{nivel_poder}
-
-SUBTEMA
-{subtema}
-
-REGRAS EXTRAS
-{regras_extras}
-
-SUGESTÕES DO EDHREC
-{edhrec_cards}
-
-========================
-PROCESSO OBRIGATÓRIO
-========================
-
-1. Escolha todas as cartas não-terreno.
-2. Escolha os terrenos utilitários.
-3. Conte quantas cartas existem.
-4. Complete APENAS com terrenos básicos.
-5. Confira novamente.
-6. O resultado final deve possuir exatamente 100 cartas.
-
-========================
-FORMATO DA RESPOSTA
-========================
-
-Primeira linha:
-
-1 {cmd["nome"]}
-
-Depois:
-
-1 Sol Ring
-1 Arcane Signet
-...
-
-Terrenos básicos:
-
-12 Forest
-10 Island
-
-Após a decklist, escreva:
-
-### 🧠 PLANO DE JOGO E COMBOS
-
-Inclua:
-
-- Estratégia geral
-- Condições de vitória
-- Principais sinergias
-- Principais combos
-- Sequência ideal de abertura
-- Como pilotar o deck
-- Pontos fracos
-- Possíveis upgrades
-
-IMPORTANTE:
-
-Antes de responder, confirme internamente que:
-
-✓ Existem exatamente 100 cartas.
-✓ O comandante foi contado.
-✓ Existem exatamente 99 cartas além do comandante.
-✓ Nenhuma carta viola a identidade de cor.
-✓ Não existem cartas duplicadas (exceto terrenos básicos).
-✓ A sintaxe é compatível com Archidekt/Moxfield.
-"""
-    
+    3. ANÁLISE TÁTICA:
+    Após a última carta, dê duas quebras de linha e adicione o cabeçalho '### 🧠 PLANO DE JOGO E COMBOS'.
+    """
 
     try:
         response = client.chat.completions.create(
@@ -234,13 +115,63 @@ Antes de responder, confirme internamente que:
             temperature=0.3
         )
         
-        resultado_texto = response.choices[0].message.content
+        texto_original = response.choices[0].message.content
+
+        # 1. Extração do JSON de proporção de cores
+        pesos_cor = {}
+        match_json = re.search(r'\{"PROPORCAO":\s*\{.*?\}\}', texto_original)
+        if match_json:
+            try:
+                pesos_cor = json.loads(match_json.group(0)).get("PROPORCAO", {})
+            except Exception:
+                pesos_cor = {}
+
+        # 2. Separação entre a lista e a análise
+        partes = texto_original.split("### 🧠 PLANO DE JOGO E COMBOS")
+        bloco_deck = partes[0].strip()
+        analise = "### 🧠 PLANO DE JOGO E COMBOS" + partes[1] if len(partes) > 1 else ""
+
+        # Isolamento das linhas de cartas (removendo JSON/comentários)
+        linhas_cartas = [
+            l.strip() for l in bloco_deck.split("\n") 
+            if l.strip() and l.strip().startswith("1 ") and not l.strip().startswith("{")
+        ]
+        
+        # Limita o bloco de não-básicas a exatamente 64 cartas (Comandante + 63)
+        linhas_cartas = linhas_cartas[:64]
+        terrenos_necessarios = 100 - len(linhas_cartas)
+
+        # 3. Cálculo proporcional de terrenos básicos
+        mapa_terrenos = {'G': 'Forest', 'U': 'Island', 'B': 'Swamp', 'R': 'Mountain', 'W': 'Plains', 'C': 'Wastes'}
+        terrenos_gerados = []
+
+        if pesos_cor and terrenos_necessarios > 0:
+            total_peso = sum(pesos_cor.values()) or 1
+            acumulado = 0
+            itens_cor = list(pesos_cor.items())
+            
+            for idx, (cor, peso) in enumerate(itens_cor):
+                if idx == len(itens_cor) - 1:
+                    qtd = terrenos_necessarios - acumulado
+                else:
+                    qtd = round((peso / total_peso) * terrenos_necessarios)
+                    acumulado += qtd
+                
+                nome_terreno = mapa_terrenos.get(cor, 'Wastes')
+                if qtd > 0:
+                    terrenos_gerados.append(f"{qtd} {nome_terreno}")
+        else:
+            terrenos_gerados.append(f"{terrenos_necessarios} Wastes")
+
+        # 4. Formatação final limpa para importação
+        decklist_final = "\n".join(linhas_cartas) + "\n" + "\n".join(terrenos_gerados)
+        resultado_formatado = f"{decklist_final}\n\n{analise}"
 
         return jsonify(
             {
                 "comandante": cmd["nome"],
                 "cores": cmd["identidade_cor"],
-                "resultado": resultado_texto,
+                "resultado": resultado_formatado,
             }
         )
     except Exception as e:
